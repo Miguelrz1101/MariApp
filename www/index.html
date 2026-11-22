@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Aprende con Mariangel - Vacaciones Divertidas</title>
+
+  <!-- CSS y fuentes locales (100% offline) -->
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/tailwind.css">
+
+  <style>
+    body {
+      font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #DBEAFE 0%, #FEF3C7 50%, #FCE7F3 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+    h1, h2, h3, .font-display {
+      font-family: 'Fredoka', 'Nunito', sans-serif;
+    }
+
+    /* Botones táctiles 3D extra grandes */
+    .btn-3d {
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.12s ease;
+      cursor: pointer;
+    }
+    .btn-3d:active:not(:disabled) {
+      transform: translateY(5px);
+      border-bottom-width: 2px !important;
+    }
+
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(2deg); }
+    }
+    .animate-float {
+      animation: floatSlow 3.2s ease-in-out infinite;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      70% { transform: scale(1.04); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes gentleShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-9px) rotate(-2deg); }
+      40% { transform: translateX(9px) rotate(2deg); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    .animate-shake {
+      animation: gentleShake 0.42s ease-in-out;
+    }
+
+    @keyframes pulseWave {
+      0%, 100% { transform: scaleY(0.45); }
+      50% { transform: scaleY(1.25); }
+    }
+    .speaking .wave-bar {
+      animation: pulseWave 0.5s ease-in-out infinite;
+    }
+    .speaking .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    .speaking .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+
+    /* Ticket dorado brillante */
+    .golden-ticket {
+      background: linear-gradient(135deg, #FEF08A 0%, #FDE047 35%, #FACC15 70%, #F59E0B 100%);
+      box-shadow: 0 20px 40px -10px rgba(245, 158, 11, 0.45), inset 0 2px 6px rgba(255, 255, 255, 0.85);
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 60;
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-between text-slate-800">
+
+
+  <!-- ==================== ACCESO FAMILIAR ==================== -->
+  <section id="pantalla-login" class="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6 bg-gradient-to-br from-sky-100 via-amber-50 to-pink-100">
+    <div class="bg-white/95 rounded-3xl p-7 sm:p-10 shadow-2xl border-4 border-white max-w-md w-full flex flex-col items-center gap-5 text-center">
+      <div class="text-6xl">👑</div>
+      <div>
+        <h1 class="text-3xl sm:text-4xl font-bold text-pink-600">Aprende con Mariangel</h1>
+        <p class="text-slate-600 font-bold mt-2">Ingresa para comenzar la aventura</p>
+      </div>
+      <form id="form-login" class="w-full flex flex-col gap-3">
+        <label class="text-left font-bold text-slate-700" for="login-usuario">Usuario</label>
+        <input id="login-usuario" autocomplete="username" class="w-full border-2 border-sky-200 rounded-2xl px-4 py-3 text-lg font-bold outline-none focus:border-sky-500" placeholder="Escribe tu usuario" required />
+        <label class="text-left font-bold text-slate-700" for="login-clave">Contraseña</label>
+        <input id="login-clave" type="password" autocomplete="current-password" class="w-full border-2 border-pink-200 rounded-2xl px-4 py-3 text-lg font-bold outline-none focus:border-pink-500" placeholder="Escribe tu contraseña" required />
+        <p id="mensaje-login" class="hidden text-sm font-bold text-red-600" role="alert">Usuario o contraseña incorrectos.</p>
+        <button type="submit" class="btn-3d w-full bg-gradient-to-b from-emerald-400 to-emerald-500 text-white border-b-8 border-emerald-700 rounded-2xl py-4 font-display font-bold text-xl shadow-lg">Entrar a la aventura 🚀</button>
+      </form>
+      <p class="text-xs text-slate-400">Acceso familiar para este dispositivo.</p>
+    </div>
+  </section>
+
+  <!-- Lienzo de confeti animado -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- ==================== BARRA SUPERIOR PERMANENTE ==================== -->
+  <header id="barra-superior" class="hidden w-full max-w-4xl mx-auto px-3 sm:px-5 pt-3 pb-2 flex items-center justify-between gap-2 z-20">
+    <!-- Botón volver al mapa -->
+    <button type="button" id="btn-volver-mapa" onclick="irAlMapa()" class="hidden btn-3d bg-white hover:bg-sky-50 text-sky-600 border-2 border-sky-200 border-b-4 border-b-sky-300 rounded-2xl px-3.5 py-2 font-display font-bold text-base sm:text-lg flex items-center gap-1.5 shadow-sm">
+      <svg class="w-6 h-6 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>Mapa</span>
+    </button>
+
+    <!-- Saludo rápido en vista de mapa -->
+    <div id="etiqueta-marca" class="bg-white/95 border-2 border-pink-200 rounded-2xl px-3.5 py-2 flex items-center gap-2 shadow-sm">
+      <svg class="w-6 h-6" viewBox="0 0 64 64"><polygon points="32,4 40,22 60,24 45,38 49,58 32,48 15,58 19,38 4,24 24,22" fill="#FACC15" stroke="#D97706" stroke-width="4" stroke-linejoin="round"/></svg>
+      <span class="font-display font-bold text-pink-600 text-sm sm:text-lg">Mariangel</span>
+    </div>
+
+    <!-- Controles derechos: Probar Voz + Estrellas + Papás -->
+    <div class="flex items-center gap-2">
+      <!-- Botón Probar Voz -->
+      <button type="button" id="btn-probar-voz" onclick="probarVozSaludo()" class="btn-3d bg-sky-500 hover:bg-sky-400 text-white border-b-4 border-sky-700 rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-sm">
+        <span class="text-base sm:text-lg">🔊</span>
+        <span id="texto-estado-voz" class="font-display font-bold text-xs sm:text-sm">Probar Voz</span>
+        <div id="ondas-voz" class="flex items-center gap-0.5 h-3.5 ml-0.5">
+          <span class="wave-bar w-1 h-2.5 bg-white rounded-full block"></span>
+          <span class="wave-bar w-1 h-3.5 bg-white rounded-full block"></span>
+          <span class="wave-bar w-1 h-2 bg-white rounded-full block"></span>
+        </div>
+      </button>
+
+      <!-- Contador total de estrellas -->
+      <button type="button" onclick="anunciarEstrellas()" class="btn-3d bg-amber-300 hover:bg-amber-200 border-2 border-amber-400 border-b-4 border-b-amber-500 rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-sm">
+        <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 64 64"><polygon points="32,4 40,22 60,24 45,38 49,58 32,48 15,58 19,38 4,24 24,22" fill="#F59E0B" stroke="#92400E" stroke-width="4" stroke-linejoin="round"/></svg>
+        <span id="contador-estrellas-total" class="font-display font-bold text-amber-950 text-base sm:text-xl">0</span>
+      </button>
+
+      <button type="button" onclick="cerrarSesion()" class="btn-3d bg-rose-100 hover:bg-rose-200 text-rose-700 border-2 border-rose-200 border-b-4 border-b-rose-300 rounded-2xl px-2.5 py-2 font-display font-bold text-xs shadow-sm" title="Cerrar sesión">Salir</button>
+
+      <!-- Botón Papás -->
+      <button type="button" onclick="abrirFiltroParental()" class="btn-3d bg-slate-100 hover:bg-slate-200 text-slate-700 border-2 border-slate-300 border-b-4 border-b-slate-400 rounded-2xl px-3 py-2 font-display font-bold text-xs sm:text-sm flex items-center gap-1 shadow-sm">
+        <span>🔒</span>
+        <span>Papás</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== CONTENEDOR PRINCIPAL ==================== -->
+  <main class="flex-1 w-full max-w-4xl mx-auto px-4 py-3 flex flex-col justify-center z-10">
+
+    <!-- 1. PANTALLA DE BIENVENIDA (#pantalla-inicio) -->
+    <section id="pantalla-inicio" class="hidden animate-pop flex flex-col items-center justify-center text-center my-auto py-4">
+      <div class="bg-white/95 rounded-3xl p-7 sm:p-10 shadow-2xl border-4 border-white max-w-lg w-full flex flex-col items-center gap-6 relative overflow-hidden">
+        
+        <!-- Estrellas decorativas animadas SVG -->
+        <div class="flex items-center justify-center gap-4 animate-float">
+          <svg class="w-12 h-12 sm:w-14 sm:h-14" viewBox="0 0 64 64">
+            <polygon points="32,4 40,22 60,24 45,38 49,58 32,48 15,58 19,38 4,24 24,22" fill="#FACC15" stroke="#D97706" stroke-width="3.5" stroke-linejoin="round"/>
+          </svg>
+          <!-- Corona / Arcoíris central SVG -->
+          <svg class="w-24 h-24 sm:w-28 sm:h-28" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="54" fill="#FCE7F3"/>
+            <path d="M22 76 A38 38 0 0 1 98 76" fill="none" stroke="#EF4444" stroke-width="7" stroke-linecap="round"/>
+            <path d="M29 76 A31 31 0 0 1 91 76" fill="none" stroke="#FACC15" stroke-width="7" stroke-linecap="round"/>
+            <path d="M36 76 A24 24 0 0 1 84 76" fill="none" stroke="#22C55E" stroke-width="7" stroke-linecap="round"/>
+            <path d="M43 76 A17 17 0 0 1 77 76" fill="none" stroke="#3B82F6" stroke-width="7" stroke-linecap="round"/>
+            <circle cx="24" cy="78" r="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2.5"/>
+            <circle cx="96" cy="78" r="11" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2.5"/>
+            <polygon points="60,12 64,22 75,23 67,30 69,41 60,35 51,41 53,30 45,23 56,22" fill="#FACC15" stroke="#D97706" stroke-width="2.5" stroke-linejoin="round"/>
+          </svg>
+          <svg class="w-12 h-12 sm:w-14 sm:h-14" viewBox="0 0 64 64">
+            <polygon points="32,4 40,22 60,24 45,38 49,58 32,48 15,58 19,38 4,24 24,22" fill="#F472B6" stroke="#DB2777" stroke-width="3.5" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div>
+          <span class="inline-block bg-purple-100 text-purple-700 font-display font-bold text-sm sm:text-base px-4 py-1 rounded-full mb-2">
+            Tus Aventuras de Vacaciones
+          </span>
+          <h1 class="text-4xl sm:text-5xl font-bold text-pink-600 leading-tight">
+            ¡Hola Mariangel!
+          </h1>
+          <p class="text-slate-600 font-bold text-lg sm:text-xl mt-2">
+            Juega cada día, gana estrellas y consigue 30 minutos de tablet
+          </p>
+        </div>
+
+        <!-- Botón gigante: PRIMERO navega y LUEGO dispara audio en try/catch -->
+        <button type="button" id="btn-empezar" onclick="iniciarApp()" class="btn-3d w-full bg-gradient-to-b from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-white border-b-8 border-emerald-700 rounded-3xl py-5 px-6 font-display font-bold text-2xl sm:text-3xl shadow-xl flex items-center justify-center gap-3">
+          <span>¡Toca aquí para empezar!</span>
+          <span class="text-3xl sm:text-4xl">🔊</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. CRONOGRAMA DE 30 DÍAS (#pantalla-mapa) -->
+    <section id="pantalla-mapa" class="hidden flex-col gap-5 my-auto pb-4">
+      <div class="bg-white/95 rounded-3xl p-5 sm:p-6 shadow-lg border-4 border-white flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="text-center sm:text-left">
+          <h1 class="text-2xl sm:text-4xl font-bold text-purple-600">
+            Mapa de Aventura de 30 Días
+          </h1>
+          <p class="text-slate-600 font-bold text-base sm:text-lg mt-0.5">
+            Toca tu día disponible para completar los 10 niveles
+          </p>
+        </div>
+        <button type="button" onclick="leerInstruccionMapa()" class="btn-3d bg-amber-400 hover:bg-amber-300 text-amber-950 border-b-4 border-amber-600 rounded-2xl px-4 py-3 font-display font-bold text-base sm:text-lg flex items-center gap-2 shrink-0 shadow-sm">
+          <span class="text-2xl">🔊</span>
+          <span>Escuchar</span>
+        </button>
+      </div>
+
+      <!-- Cuadrícula de 30 días -->
+      <div id="grid-dias" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5 sm:gap-4">
+        <!-- Tarjetas generadas dinámicamente -->
+      </div>
+    </section>
+
+    <!-- 3. LECCIÓN DIARIA (#pantalla-leccion) -->
+    <section id="pantalla-leccion" class="hidden flex-col items-center gap-4 my-auto w-full">
+      
+      <!-- Barra de progreso de 10 estrellas del día -->
+      <div class="bg-white/95 rounded-3xl px-4 py-3 shadow-md border-4 border-white w-full flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span id="badge-dia-actual" class="bg-purple-600 text-white font-display font-bold text-sm sm:text-base px-3.5 py-1 rounded-full">
+            Día 1
+          </span>
+          <span id="titulo-tema-dia" class="font-display font-bold text-slate-700 text-sm sm:text-lg">
+            Aventura del Día
+          </span>
+        </div>
+
+        <div id="barra-estrellas-leccion" class="flex items-center gap-1.5 bg-amber-50 border-2 border-amber-200 px-3 py-1 rounded-2xl">
+          <!-- 10 estrellas -->
+        </div>
+      </div>
+
+      <!-- Tarjeta de instrucción + botón Escuchar de nuevo -->
+      <div class="bg-white/95 rounded-3xl p-4 sm:p-5 shadow-lg border-4 border-white w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+        <h2 id="texto-instruccion-reto" class="text-xl sm:text-3xl font-bold text-slate-800 text-center sm:text-left leading-snug">
+          Instrucción del reto
+        </h2>
+
+        <button type="button" onclick="repetirInstruccionActual()" class="btn-3d bg-amber-400 hover:bg-amber-300 text-amber-950 border-b-4 border-amber-600 rounded-2xl px-4 py-3 font-display font-bold text-base sm:text-lg flex items-center gap-2 shadow-sm shrink-0">
+          <span class="text-2xl sm:text-3xl">🔊</span>
+          <span>Escuchar de nuevo</span>
+        </button>
+      </div>
+
+      <!-- Escenario visual central SVG -->
+      <div id="escenario-reto" class="bg-white/95 rounded-3xl p-5 sm:p-7 shadow-xl border-4 border-white w-full min-h-[210px] sm:min-h-[240px] flex flex-col items-center justify-center relative">
+        <!-- Contenido dinámico -->
+      </div>
+
+      <!-- Mensaje de ánimo / acierto -->
+      <div class="min-h-[46px] flex items-center justify-center w-full">
+        <div id="mensaje-feedback" class="hidden rounded-full px-6 py-2 font-display font-bold text-lg sm:text-2xl shadow-md text-center"></div>
+      </div>
+
+      <!-- 3 Opciones grandes táctiles -->
+      <div id="opciones-reto" class="grid grid-cols-3 gap-3 sm:gap-5 w-full">
+        <!-- Botones de respuesta -->
+      </div>
+    </section>
+
+    <!-- 4. PANTALLA DE RECOMPENSA FINAL (#pantalla-premio) -->
+    <section id="pantalla-premio" class="hidden flex-col items-center text-center my-auto py-2">
+      <div class="golden-ticket rounded-3xl p-6 sm:p-8 border-4 border-white max-w-xl w-full relative overflow-hidden animate-pop">
+        
+        <!-- Trofeo SVG animado -->
+        <div class="flex justify-center mb-2">
+          <svg class="w-20 h-20 sm:w-24 sm:h-24 animate-float" viewBox="0 0 100 100">
+            <path d="M28 20 H72 V44 C72 58 62 68 50 68 C38 68 28 58 28 44 Z" fill="#FBBF24" stroke="#92400E" stroke-width="4"/>
+            <path d="M28 26 H16 C16 40 22 48 28 48" fill="none" stroke="#92400E" stroke-width="4" stroke-linecap="round"/>
+            <path d="M72 26 H84 C84 40 78 48 72 48" fill="none" stroke="#92400E" stroke-width="4" stroke-linecap="round"/>
+            <rect x="44" y="68" width="12" height="14" fill="#D97706" stroke="#92400E" stroke-width="3"/>
+            <rect x="32" y="82" width="36" height="10" rx="4" fill="#78350F"/>
+            <polygon points="50,30 53,39 62,40 55,46 57,55 50,50 43,55 45,46 38,40 47,39" fill="#FFFBEB"/>
+          </svg>
+        </div>
+
+        <span id="etiqueta-dia-completado" class="inline-block bg-white/95 text-amber-900 font-display font-bold text-base sm:text-lg px-4 py-1 rounded-full shadow-xs">
+          ¡Día 1 Completado!
+        </span>
+
+        <h1 class="text-3xl sm:text-4xl font-bold text-amber-950 mt-3 leading-tight">
+          ¡Felicitaciones, Mariangel!
+        </h1>
+
+        <!-- Ticket Dorado Gigante -->
+        <div class="bg-white rounded-3xl p-5 sm:p-6 my-5 border-4 border-dashed border-amber-400 shadow-inner">
+          <!-- Dibujo Tablet SVG -->
+          <div class="flex justify-center mb-2">
+            <svg class="w-16 h-16 sm:w-20 sm:h-20" viewBox="0 0 100 100">
+              <rect x="20" y="10" width="60" height="80" rx="10" fill="#334155" stroke="#0F172A" stroke-width="4"/>
+              <rect x="26" y="18" width="48" height="60" rx="4" fill="#38BDF8"/>
+              <polygon points="50,30 55,42 68,43 58,52 61,64 50,57 39,64 42,52 32,43 45,42" fill="#FACC15" stroke="#D97706" stroke-width="2"/>
+              <circle cx="50" cy="84" r="3" fill="#CBD5E1"/>
+            </svg>
+          </div>
+
+          <p class="font-display font-bold text-2xl sm:text-3xl text-purple-600 leading-tight">
+            ¡TE GANASTE 30 MINUTOS DE USO DE LA TABLET!
+          </p>
+          <p class="text-amber-800 font-extrabold text-sm sm:text-base mt-2">
+            ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐ +10 estrellas ganadas hoy
+          </p>
+        </div>
+
+        <!-- Temporizador opcional de 30:00 minutos para papás -->
+        <div class="bg-amber-950/10 rounded-2xl p-4 mb-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="text-center sm:text-left">
+            <span class="block text-xs font-extrabold uppercase tracking-wider text-amber-950">
+              Temporizador para Papás
+            </span>
+            <span id="display-temporizador" class="font-display font-bold text-3xl text-amber-950">
+              30:00
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" id="btn-toggle-timer" onclick="alternarTemporizador()" class="btn-3d bg-emerald-500 hover:bg-emerald-400 text-white border-b-4 border-emerald-700 rounded-xl px-4 py-2 font-display font-bold text-base shadow-sm">
+              ▶️ Iniciar
+            </button>
+            <button type="button" onclick="reiniciarTemporizador()" class="btn-3d bg-white hover:bg-amber-50 text-amber-950 border-b-4 border-amber-300 rounded-xl px-3 py-2 font-display font-bold text-base shadow-sm">
+              🔄
+            </button>
+          </div>
+        </div>
+
+        <!-- Botones finales -->
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button type="button" onclick="leerMensajePremio()" class="btn-3d bg-white hover:bg-amber-50 text-amber-950 border-b-4 border-amber-300 rounded-2xl py-3.5 px-5 font-display font-bold text-lg flex items-center justify-center gap-2 shadow-md">
+            <span class="text-2xl">🔊</span>
+            <span>Escuchar premio</span>
+          </button>
+
+          <button type="button" onclick="irAlMapa()" class="btn-3d flex-1 bg-gradient-to-b from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white border-b-4 border-purple-800 rounded-2xl py-3.5 px-6 font-display font-bold text-xl flex items-center justify-center gap-2 shadow-lg">
+            <span>Volver al Mapa de Días</span>
+            <span>🗺️</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODAL 1: FILTRO PARENTAL ==================== -->
+  <div id="modal-filtro-papas" class="hidden fixed inset-0 bg-slate-900/60 z-50 f
