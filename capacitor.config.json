@@ -1,0 +1,6 @@
+{
+  "appId": "com.mariangel.aprende",
+  "appName": "Aprende con Mariangel",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}
