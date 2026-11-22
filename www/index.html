@@ -537,10 +537,10 @@
       return resultado;
     }
 
-    function detenerVozActual() {
+    function detenerVozActual(sinNativo) {
       _tokenLocucion += 1;
       actualizarVisualVoz(false);
-      try { const t = obtenerTTSNativo(); if (t) t.stop().catch(() => {}); } catch (e) {}
+      try { if (!sinNativo) { const t = obtenerTTSNativo(); if (t) t.stop().catch(() => {}); } } catch (e) {}
       try {
         if (window._audioTTS) {
           window._audioTTS.pause();
@@ -647,14 +647,31 @@
       return elegido;
     }
 
+    let _ultimoErrorVoz = '';
+    function textoError(e) {
+      try { return String((e && (e.message || e.errorMessage)) || e || 'error'); } catch (x) { return 'error'; }
+    }
+    function hablarNativoUnaVez(tts, texto, lang) {
+      return tts.speak({ text: texto, lang: lang, rate: 0.95, pitch: 1.1, volume: 1.0, category: 'ambient', queueStrategy: 0 });
+    }
     async function hablarNativo(tts, texto, token) {
       try {
         const lang = await elegirIdiomaNativo(tts);
         if (token !== _tokenLocucion) return;
         actualizarVisualVoz(true);
-        await tts.speak({ text: texto, lang: lang, rate: 0.95, pitch: 1.1, volume: 1.0, category: 'ambient' });
+        try {
+          await hablarNativoUnaVez(tts, texto, lang);
+        } catch (e1) {
+          if (token !== _tokenLocucion) return;
+          _ultimoErrorVoz = textoError(e1);
+          await new Promise(r => setTimeout(r, 900));
+          if (token !== _tokenLocucion) return;
+          await hablarNativoUnaVez(tts, texto, lang);
+        }
+        _ultimoErrorVoz = '';
         if (token === _tokenLocucion) actualizarVisualVoz(false);
       } catch (e) {
+        _ultimoErrorVoz = textoError(e);
         if (token === _tokenLocucion) {
           actualizarVisualVoz(false);
           usarSpeechSynthesisRespaldo(texto, token);
@@ -668,7 +685,7 @@
     function hablar(texto) {
       try {
         if (!texto) return;
-        detenerVozActual();
+        detenerVozActual(true);
         const token = _tokenLocucion;
         const limpio = dividirTextoEnFragmentos(texto, 400).join(' ');
         if (!limpio) return;
@@ -1325,6 +1342,10 @@
         const lbl = document.getElementById('texto-estado-voz');
         if (lbl) lbl.textContent = '¡Voz Activa!';
         hablar('¡Hola Mariangel! Qué alegría verte');
+        setTimeout(() => {
+          if (_ultimoErrorVoz) mostrarAviso('Voz: ' + _ultimoErrorVoz.slice(0, 70));
+          else if (_sinVozEs) mostrarAviso('Falta la voz en español del teléfono');
+        }, 2600);
       } catch (e) {}
     }
 
@@ -2002,6 +2023,7 @@
       const formularioRegistro = document.getElementById('form-registro');
       if (formularioRegistro) formularioRegistro.addEventListener('submit', crearCuenta);
       configurarBotonAtras();
+      try { const t0 = obtenerTTSNativo(); if (t0) elegirIdiomaNativo(t0); } catch (e) {}
       if (!hayCuentas()) {
         mostrarRegistro();
       } else {
