@@ -164,7 +164,7 @@
   <canvas id="confetti-canvas"></canvas>
 
   <!-- ==================== BARRA SUPERIOR PERMANENTE ==================== -->
-  <header id="barra-superior" class="hidden w-full max-w-4xl mx-auto px-3 sm:px-5 pt-3 pb-2 flex items-center justify-between gap-2 z-20">
+  <header id="barra-superior" class="hidden w-full max-w-4xl mx-auto px-2 sm:px-5 pt-3 pb-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2 z-20">
     <!-- Botón volver al mapa -->
     <button type="button" id="btn-volver-mapa" onclick="irAlMapa()" class="hidden btn-3d bg-white hover:bg-sky-50 text-sky-600 border-2 border-sky-200 border-b-4 border-b-sky-300 rounded-2xl px-3.5 py-2 font-display font-bold text-base sm:text-lg flex items-center gap-1.5 shadow-sm">
       <svg class="w-6 h-6 text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -174,15 +174,15 @@
     <!-- Saludo rápido en vista de mapa -->
     <div id="etiqueta-marca" class="bg-white/95 border-2 border-pink-200 rounded-2xl px-3.5 py-2 flex items-center gap-2 shadow-sm">
       <svg class="w-6 h-6" viewBox="0 0 64 64"><polygon points="32,4 40,22 60,24 45,38 49,58 32,48 15,58 19,38 4,24 24,22" fill="#FACC15" stroke="#D97706" stroke-width="4" stroke-linejoin="round"/></svg>
-      <span class="font-display font-bold text-pink-600 text-sm sm:text-lg">Mariangel</span>
+      <span class="hidden sm:inline font-display font-bold text-pink-600 text-sm sm:text-lg">Mariangel</span>
     </div>
 
     <!-- Controles derechos: Probar Voz + Estrellas + Papás -->
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
       <!-- Botón Probar Voz -->
       <button type="button" id="btn-probar-voz" onclick="probarVozSaludo()" class="btn-3d bg-sky-500 hover:bg-sky-400 text-white border-b-4 border-sky-700 rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-sm">
         <span class="text-base sm:text-lg">🔊</span>
-        <span id="texto-estado-voz" class="font-display font-bold text-xs sm:text-sm">Probar Voz</span>
+        <span id="texto-estado-voz" class="hidden sm:inline font-display font-bold text-xs sm:text-sm">Probar Voz</span>
         <div id="ondas-voz" class="flex items-center gap-0.5 h-3.5 ml-0.5">
           <span class="wave-bar w-1 h-2.5 bg-white rounded-full block"></span>
           <span class="wave-bar w-1 h-3.5 bg-white rounded-full block"></span>
@@ -558,6 +558,7 @@
     function usarSpeechSynthesisRespaldo(texto, token) {
       try {
         if (!('speechSynthesis' in window)) {
+          _ultimoErrorVoz = 'sin motor de voz';
           actualizarVisualVoz(false);
           return;
         }
@@ -591,7 +592,8 @@
         utter.onend = () => {
           if (token === _tokenLocucion) actualizarVisualVoz(false);
         };
-        utter.onerror = () => {
+        utter.onerror = (ev) => {
+          _ultimoErrorVoz = 'navegador: ' + ((ev && ev.error) || 'error');
           if (token === _tokenLocucion) actualizarVisualVoz(false);
         };
 
@@ -605,6 +607,33 @@
      * Motor de voz OFFLINE: TextToSpeech nativo de Android (plugin Capacitor),
      * con respaldo a speechSynthesis del WebView.
      */
+    // Acceso a plugins nativos de Capacitor (funciona aunque no se cargue @capacitor/core)
+    let _motorVoz = '';
+    function pluginNativo(nombre) {
+      try {
+        const C = window.Capacitor;
+        const hayPuente = !!(window.androidBridge || (C && typeof C.nativePromise === 'function'));
+        if (!C || !hayPuente) return null;
+        if (typeof C.registerPlugin === 'function') return C.registerPlugin(nombre);
+        if (C.Plugins && C.Plugins[nombre]) return C.Plugins[nombre];
+        if (typeof C.nativePromise === 'function') {
+          const w = {};
+          ['speak', 'stop', 'getSupportedLanguages', 'isLanguageSupported', 'isAvailable', 'verifyIdentity', 'exitApp'].forEach(m => {
+            w[m] = (o) => C.nativePromise(nombre, m, o || {});
+          });
+          w.addListener = (evento, cb) => {
+            try {
+              if (typeof C.addListener === 'function') return Promise.resolve(C.addListener(nombre, evento, cb));
+              C.nativeCallback(nombre, 'addListener', { eventName: evento }, cb);
+            } catch (e) {}
+            return Promise.resolve({ remove: () => {} });
+          };
+          return w;
+        }
+      } catch (e) {}
+      return null;
+    }
+
     let _ttsNativo = null;
     let _ttsLang = null;
     let _sinVozEs = false;
@@ -612,12 +641,7 @@
     function obtenerTTSNativo() {
       try {
         if (_ttsNativo !== null) return _ttsNativo || null;
-        const C = window.Capacitor;
-        if (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && typeof C.registerPlugin === 'function') {
-          _ttsNativo = C.registerPlugin('TextToSpeech');
-        } else {
-          _ttsNativo = false;
-        }
+        _ttsNativo = pluginNativo('TextToSpeech') || false;
       } catch (e) { _ttsNativo = false; }
       return _ttsNativo || null;
     }
@@ -626,7 +650,7 @@
       if (_ttsLang) return _ttsLang;
       let elegido = null;
       try {
-        const r = await tts.getSupportedLanguages();
+        const r = await Promise.race([tts.getSupportedLanguages(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout idiomas')), 4000))]);
         const langs = ((r && r.languages) || []).map(l => String(l).replace('_', '-'));
         const pref = ['es-CO', 'es-419', 'es-US', 'es-MX', 'es-ES'];
         for (const p of pref) {
@@ -674,6 +698,7 @@
         _ultimoErrorVoz = textoError(e);
         if (token === _tokenLocucion) {
           actualizarVisualVoz(false);
+          _motorVoz = 'navegador';
           usarSpeechSynthesisRespaldo(texto, token);
         }
       }
@@ -690,8 +715,8 @@
         const limpio = dividirTextoEnFragmentos(texto, 400).join(' ');
         if (!limpio) return;
         const tts = obtenerTTSNativo();
-        if (tts) hablarNativo(tts, limpio, token);
-        else usarSpeechSynthesisRespaldo(limpio, token);
+        if (tts) { _motorVoz = 'nativo'; hablarNativo(tts, limpio, token); }
+        else { _motorVoz = 'navegador'; usarSpeechSynthesisRespaldo(limpio, token); }
       } catch (err) {
         actualizarVisualVoz(false);
       }
@@ -700,9 +725,8 @@
     // Botón "Atrás" de Android y pausa de la app
     function configurarBotonAtras() {
       try {
-        const C = window.Capacitor;
-        if (!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform())) return;
-        const AppPlugin = C.registerPlugin('App');
+        const AppPlugin = pluginNativo('App');
+        if (!AppPlugin) return;
         const visible = id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); };
         AppPlugin.addListener('backButton', () => {
           try {
@@ -1101,10 +1125,7 @@
     function obtenerBiometria() {
       try {
         if (_bio !== null) return _bio || null;
-        const C = window.Capacitor;
-        if (C && typeof C.isNativePlatform === 'function' && C.isNativePlatform() && typeof C.registerPlugin === 'function') {
-          _bio = C.registerPlugin('NativeBiometric');
-        } else { _bio = false; }
+        _bio = pluginNativo('NativeBiometric') || false;
       } catch (e) { _bio = false; }
       return _bio || null;
     }
@@ -1343,8 +1364,7 @@
         if (lbl) lbl.textContent = '¡Voz Activa!';
         hablar('¡Hola Mariangel! Qué alegría verte');
         setTimeout(() => {
-          if (_ultimoErrorVoz) mostrarAviso('Voz: ' + _ultimoErrorVoz.slice(0, 70));
-          else if (_sinVozEs) mostrarAviso('Falta la voz en español del teléfono');
+          mostrarAviso('Voz ' + (_motorVoz || '?') + (_ttsLang ? ' · ' + _ttsLang : '') + ' · ' + (_ultimoErrorVoz ? _ultimoErrorVoz.slice(0, 60) : (_sinVozEs ? 'falta voz en español' : 'ok')));
         }, 2600);
       } catch (e) {}
     }
